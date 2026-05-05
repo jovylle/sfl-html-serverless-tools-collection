@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Example Farm Inventory</title>
+  <link rel="stylesheet" href="../../shared/common.css" />
+</head>
+<body>
+  <h1>Farm Inventory Dashboard</h1>
+  <div id="app">
+    <p>Loading data...</p>
+  </div>
+  <script src="../../shared/common.js"></script>
+  <script>
+    fetch('../../../tests/api.sunflower-land.com-community-farms-1-sample.json')
+      .then(res => res.json())
+      .then(data => {
+        renderInventory(data.farm.inventory);
+      })
+      .catch(e => {
+        const appDiv = document.getElementById('app');
+        if (appDiv) {
+          appDiv.innerHTML = '<p>Error loading data.</p>';
+        }
+      });
+  </script>
+</body>
+</html>
