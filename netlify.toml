@@ -1,0 +1,6 @@
+# Static site: no build step. Root `index.html` is the home page.
+# Each tool: `tools/<name>/index.html` → served at `/tools/<name>/` (no `.html` in the URL).
+
+[build]
+  publish = "."
+  # command intentionally omitted — deploy files as-is

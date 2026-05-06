@@ -12,10 +12,17 @@ This repo favors **plain static pages** plus **serverless** only where something
 
 ## Layout
 
-- **`tools/<name>/`** — one tool per folder; typically a single `index.html` plus inline or local scripts, referencing `shared/`.
+- **`index.html`** (repo root) — home page listing tools and short intro. Deployed at `/` (no `.html` in the URL).
+- **`tools/<name>/`** — one tool per folder; use **`index.html`** inside that folder so the live URL is **`/tools/<name>/`**, not `something.html`.
 - **`shared/`** — common CSS/JS used across tools.
 - **`functions/`** — serverless handlers for privileged or sensitive flows (not required for read-only community tools).
 - **`tests/`** — fixtures and sample API payloads for local development (e.g. cached community farm JSON).
+
+### Clean URLs (no `.html`)
+
+Link to **`/tools/<name>/`** (trailing slash is fine). Do not link to `index.html` or `page.html` in docs or the home page—Netlify and most static hosts serve `index.html` automatically for that path, so the address bar stays clean.
+
+When you add a tool, create **`tools/<new-tool>/index.html`** and add a row to the root **`index.html`** tool list.
 
 CDN or edge builds may inject common headers/footers; plan for minification, gzip, and caching at deploy time.
 
@@ -30,19 +37,35 @@ Tools in this repo often **read public JSON** (farm snapshots, listings, etc.). 
 
 ## Getting started
 
-Open any `tools/<name>/index.html` in a browser, or serve the repo root with a static file server so `fetch` paths resolve.
+Open **`index.html`** at the repo root, or open **`tools/<name>/index.html`** directly. For local `fetch` paths to work, serve the **repo root** (not only the tool folder), for example:
 
-Example:
+```bash
+npx serve .
+```
 
-- `tools/example/index.html` loads sample inventory from `tests/api.sunflower-land.com-community-farms-1-sample.json`.
+Example tool:
+
+- **`tools/example/`** loads sample inventory from `tests/api.sunflower-land.com-community-farms-1-sample.json`.
 
 ## Development
 
 Add new tools under `tools/` or extend `shared/`. Document in the tool’s HTML (or a short comment) which APIs it calls and any third-party scripts with license notes.
 
-## Deployment
+If you fork this repo, update the **GitHub** link in the root `index.html` footer to match your remote.
 
-Target static hosting plus optional serverless; optimize with build-time minification, compression, and edge caching.
+## Deployment (Netlify)
+
+This repo is a **static site**: no build command, publish from the repository root.
+
+1. In [Netlify](https://www.netlify.com/), choose **Add new site → Import an existing project** and connect this Git repo.
+2. Leave **Build command** empty (or use a no-op such as `true` if the UI requires a value).
+3. Set **Publish directory** to **`.`** (a single dot = repo root).  
+   If you use **`netlify.toml`**, it already sets `publish = "."`—matching these fields in the UI avoids surprises.
+4. Deploy. The home page is **`/`**; tools are **`/tools/<name>/`**.
+
+Optional: in Netlify **Site configuration → Build & deploy → Post processing**, enable **Pretty URLs** if you want extra redirects from `*.html` to extensionless paths (folder + `index.html` already gives you clean tool URLs).
+
+For other hosts, mirror the same idea: serve the repo root as the document root; keep optional serverless under `functions/` separate per that platform.
 
 ## License
 
