@@ -140,6 +140,7 @@
     }
 
     .tiny { font-size: 0.75rem; color: var(--muted); }
+    .tiny input, .tiny select { font-size: 0.75rem; }
     .list-reset { list-style: none; margin: 0; padding: 0; }
     .list-reset li { padding: 0.3rem 0; border-bottom: 1px solid #edf3fb; }
     .list-reset li:last-child { border-bottom: none; }
@@ -189,6 +190,11 @@
       </section>
 
       <section class="panel">
+        <h2>Factions Snapshot</h2>
+        <div class="content" id="factionsBoard">Loading...</div>
+      </section>
+
+      <section class="panel">
         <h2>Farm Boost Ranges</h2>
         <div class="content" id="farmBoosts">Loading...</div>
       </section>
@@ -204,25 +210,30 @@
         <h2>NFT Floors</h2>
         <div class="content" id="nftsBoard">Loading...</div>
       </section>
+
+      <section class="panel">
+        <h2>Revamp Skills Snapshot</h2>
+        <div class="content" id="skillsBoard">Loading...</div>
+      </section>
     </div>
   </div>
 
   <script>
-    const BASE = "https://sfl.world";
-    const FALLBACK_PROXY = "/.netlify/functions/sfl-proxy";
+    const SERVERLESS_API = "/.netlify/functions/sfl-proxy";
+    let skillSectionsCache = [];
 
-    async function fetchJson(path) {
-      const direct = BASE + path;
-      try {
-        const response = await fetch(direct);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return await response.json();
-      } catch (_) {
-        const viaProxy = `${FALLBACK_PROXY}?path=${encodeURIComponent(path)}`;
-        const response = await fetch(viaProxy);
-        if (!response.ok) throw new Error(`Proxy failed: HTTP ${response.status}`);
-        return await response.json();
+    async function fetchServerless(endpoint, farmId) {
+      const url = new URL(SERVERLESS_API, window.location.origin);
+      url.searchParams.set("endpoint", endpoint);
+      if (farmId !== undefined && farmId !== null) {
+        url.searchParams.set("farmId", String(farmId));
       }
+
+      const response = await fetch(url.toString());
+      if (!response.ok) {
+        throw new Error(`Serverless API ${endpoint} failed: HTTP ${response.status}`);
+      }
+      return await response.json();
     }
 
     function fmt(value, digits = 4) {
@@ -375,9 +386,86 @@
       `;
     }
 
+    function renderFactions(data) {
+      const holder = document.getElementById("factionsBoard");
+      if (!holder) return;
+
+      const rows = (data?.rows || [])
+        .map((row) => `
+          <tr>
+            <td>${row.faction}</td>
+            <td class="right">${row.cost}</td>
+            <td class="right">${row.members}</td>
+            <td class="right">${row.marksTotal}</td>
+            <td class="right">${row.emblemsTotal}</td>
+          </tr>
+        `)
+        .join("");
+
+      holder.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>Faction</th>
+              <th class="right">Cost</th>
+              <th class="right">Members</th>
+              <th class="right">Marks</th>
+              <th class="right">Emblems</th>
+            </tr>
+          </thead>
+          <tbody>${rows || '<tr><td colspan="5">No faction data found.</td></tr>'}</tbody>
+        </table>
+      `;
+    }
+
+    function renderSkillsSection(index) {
+      const holder = document.getElementById("skillsBoard");
+      if (!holder) return;
+      const section = skillSectionsCache[index];
+
+      if (!section) {
+        holder.innerHTML = '<div class="tiny">No skills data.</div>';
+        return;
+      }
+
+      const options = skillSectionsCache.map((item, i) =>
+        `<option value="${i}" ${i === index ? "selected" : ""}>${item.section}</option>`
+      ).join("");
+
+      const rows = (section.skills || []).map((item) => `
+        <tr>
+          <td>${item.name}</td>
+          <td class="right">${item.points || "-"}</td>
+          <td>${item.island || "-"}</td>
+          <td>${item.boosts || "-"}</td>
+        </tr>
+      `).join("");
+
+      holder.innerHTML = `
+        <div class="tiny" style="display:flex;justify-content:space-between;gap:0.5rem;align-items:center;margin-bottom:0.4rem;">
+          <label for="skillsSectionSelect"><strong>Section</strong></label>
+          <select id="skillsSectionSelect">${options}</select>
+        </div>
+        <div class="tiny" style="margin-bottom:0.4rem;">Showing ${section.skills.length} sampled skills from ${section.section}.</div>
+        <table>
+          <thead><tr><th>Skill</th><th class="right">Pts</th><th>Island</th><th>Boost</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="4">No skills rows.</td></tr>'}</tbody>
+        </table>
+      `;
+
+      document.getElementById("skillsSectionSelect")?.addEventListener("change", (event) => {
+        renderSkillsSection(Number(event.target.value || 0));
+      });
+    }
+
+    function renderSkills(data) {
+      skillSectionsCache = data?.sections || [];
+      renderSkillsSection(0);
+    }
+
     async function loadFarmIdentity(farmId) {
       try {
-        const info = await fetchJson(`/api/v1/land/info/nft_id/${farmId}`);
+        const info = await fetchServerless("landInfo", farmId);
         renderLandIdentity(info, farmId);
       } catch {
         const holder = document.getElementById("landIdentity");
@@ -386,7 +474,7 @@
     }
 
     async function loadFarmBoosts(farmId) {
-      const data = await fetchJson(`/api/v1/land/${farmId}`);
+      const data = await fetchServerless("land", farmId);
       renderFarmBoosts(data, farmId);
     }
 
@@ -400,24 +488,29 @@
 
       setStatus("Loading APIs...", "");
       try {
-        const [exchange, prices, auctions, nfts] = await Promise.all([
-          fetchJson("/api/v1.1/exchange"),
-          fetchJson("/api/v1/prices"),
-          fetchJson("/api/v1/auctions"),
-          fetchJson("/api/v1/nfts")
+        const [dashboard, factions, skills] = await Promise.all([
+          fetchServerless("dashboard"),
+          fetchServerless("factions"),
+          fetchServerless("skills")
         ]);
+        const exchange = dashboard?.exchange || {};
+        const prices = dashboard?.prices || {};
+        const auctions = dashboard?.auctions || {};
+        const nfts = dashboard?.nfts || {};
 
         renderExchange(exchange);
         renderPacks(exchange);
         renderPrices(prices);
         renderAuctions(auctions);
         renderNfts(nfts);
+        renderFactions(factions);
+        renderSkills(skills);
 
         await Promise.all([loadFarmBoosts(farmId), loadFarmIdentity(farmId)]);
-        setStatus(`Live data loaded from sfl.world for farm NFT ${farmId}.`, "ok");
+        setStatus(`Live data loaded through serverless API for farm NFT ${farmId}.`, "ok");
       } catch (error) {
         console.error(error);
-        setStatus("Could not load one or more APIs. If local static mode blocks CORS, deploy on Netlify to use the function proxy.", "error");
+        setStatus("Could not load one or more serverless endpoints. Deploy on Netlify so /.netlify/functions/sfl-proxy is available.", "error");
       }
     }
 
