@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SFL World Lite Dashboard</title>
+  <link rel="stylesheet" href="../../shared/common.css" />
+  <style>
+    :root {
+      --panel-bg: #ffffff;
+      --panel-border: #dbe4ef;
+      --muted: #5c6f88;
+      --title: #163149;
+      --ok: #2a8f45;
+      --warn: #b05f16;
+      --danger: #c33838;
+    }
+
+    body {
+      background: #eef3f9;
+      color: #0f2133;
+      max-width: 1360px;
+      margin: 0 auto;
+      padding: 1rem;
+    }
+
+    .topbar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .topbar h1 {
+      font-size: 1.2rem;
+      margin: 0;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    input, button {
+      border: 1px solid #c4d1e1;
+      border-radius: 0.4rem;
+      font: inherit;
+      padding: 0.4rem 0.6rem;
+      background: #fff;
+      color: #12273c;
+    }
+
+    button {
+      cursor: pointer;
+      font-weight: 600;
+      background: #edf3fb;
+    }
+
+    .status {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 0.75rem;
+    }
+
+    .status.error { color: var(--danger); }
+    .status.warn { color: var(--warn); }
+    .status.ok { color: var(--ok); }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 280px 1fr 320px;
+      gap: 0.75rem;
+    }
+
+    .column {
+      display: grid;
+      gap: 0.75rem;
+      align-content: start;
+    }
+
+    .panel {
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 0.55rem;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+      overflow: hidden;
+    }
+
+    .panel h2 {
+      margin: 0;
+      padding: 0.55rem 0.7rem;
+      font-size: 0.9rem;
+      color: var(--title);
+      border-bottom: 1px solid var(--panel-border);
+      background: #f8fbff;
+    }
+
+    .panel .content {
+      padding: 0.6rem 0.7rem;
+      font-size: 0.88rem;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(100px, 1fr));
+      gap: 0.5rem;
+    }
+
+    .stat {
+      border: 1px solid #e2eaf5;
+      border-radius: 0.4rem;
+      padding: 0.45rem;
+      background: #fbfdff;
+    }
+
+    .stat .k { color: var(--muted); display: block; font-size: 0.8rem; }
+    .stat .v { font-weight: 700; }
+
+    table {
+      width: 100%;
+      max-width: none;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+
+    th, td {
+      border: 1px solid #e0e8f2;
+      padding: 0.35rem 0.4rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f4f8fd;
+      color: #2a4360;
+    }
+
+    .tiny { font-size: 0.75rem; color: var(--muted); }
+    .list-reset { list-style: none; margin: 0; padding: 0; }
+    .list-reset li { padding: 0.3rem 0; border-bottom: 1px solid #edf3fb; }
+    .list-reset li:last-child { border-bottom: none; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    .right { text-align: right; }
+
+    @media (max-width: 1150px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <h1>SFL World Lite Dashboard</h1>
+    <div class="toolbar">
+      <label for="farmIdInput" class="tiny">Farm NFT ID</label>
+      <input id="farmIdInput" type="number" value="114779" min="1" />
+      <button id="loadBtn" type="button">Load Farm</button>
+      <button id="refreshBtn" type="button">Refresh All</button>
+    </div>
+  </div>
+
+  <div id="status" class="status">Loading data...</div>
+
+  <div class="layout">
+    <div class="column">
+      <section class="panel">
+        <h2>Market Snapshot</h2>
+        <div class="content" id="exchangeSummary">Loading...</div>
+      </section>
+
+      <section class="panel">
+        <h2>Coins & Gems Packs</h2>
+        <div class="content" id="packsSummary">Loading...</div>
+      </section>
+
+      <section class="panel">
+        <h2>Land Identity</h2>
+        <div class="content" id="landIdentity">Load a farm to view details.</div>
+      </section>
+    </div>
+
+    <div class="column">
+      <section class="panel">
+        <h2>Upcoming Auctions</h2>
+        <div class="content" id="auctions">Loading...</div>
+      </section>
+
+      <section class="panel">
+        <h2>Farm Boost Ranges</h2>
+        <div class="content" id="farmBoosts">Loading...</div>
+      </section>
+    </div>
+
+    <div class="column">
+      <section class="panel">
+        <h2>Resource Prices (P2P)</h2>
+        <div class="content" id="priceBoard">Loading...</div>
+      </section>
+
+      <section class="panel">
+        <h2>NFT Floors</h2>
+        <div class="content" id="nftsBoard">Loading...</div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const BASE = "https://sfl.world";
+    const FALLBACK_PROXY = "/.netlify/functions/sfl-proxy";
+
+    async function fetchJson(path) {
+      const direct = BASE + path;
+      try {
+        const response = await fetch(direct);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return await response.json();
+      } catch (_) {
+        const viaProxy = `${FALLBACK_PROXY}?path=${encodeURIComponent(path)}`;
+        const response = await fetch(viaProxy);
+        if (!response.ok) throw new Error(`Proxy failed: HTTP ${response.status}`);
+        return await response.json();
+      }
+    }
+
+    function fmt(value, digits = 4) {
+      if (value === null || value === undefined || Number.isNaN(Number(value))) return "-";
+      return Number(value).toLocaleString(undefined, { maximumFractionDigits: digits });
+    }
+
+    function fmtMoney(value) {
+      if (value === null || value === undefined || Number.isNaN(Number(value))) return "-";
+      return Number(value).toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+    }
+
+    function setStatus(message, level = "") {
+      const el = document.getElementById("status");
+      if (!el) return;
+      el.className = `status${level ? " " + level : ""}`;
+      el.textContent = message;
+    }
+
+    function renderExchange(data) {
+      const holder = document.getElementById("exchangeSummary");
+      if (!holder) return;
+      const sfl = data?.sfl ?? {};
+      const pol = data?.pol ?? {};
+      holder.innerHTML = `
+        <div class="stats">
+          <div class="stat"><span class="k">SFL/USD</span><span class="v">$${fmtMoney(sfl.usd)}</span></div>
+          <div class="stat"><span class="k">POL/USD</span><span class="v">$${fmtMoney(pol.usd)}</span></div>
+          <div class="stat"><span class="k">SFL/POL</span><span class="v">${fmt(sfl.pol, 6)}</span></div>
+          <div class="stat"><span class="k">SFL Supply</span><span class="v">${fmt(sfl.supply, 0)}</span></div>
+        </div>
+      `;
+    }
+
+    function renderPacks(data) {
+      const holder = document.getElementById("packsSummary");
+      if (!holder) return;
+      const gems = data?.gems ?? {};
+      const coins = data?.coins ?? {};
+      const gemRows = Object.values(gems).slice(0, 4).map(
+        pack => `<li><span class="mono">${fmt(pack.gem, 0)} gems</span> - ${fmt(pack.sfl, 2)} SFL</li>`
+      );
+      const coinRows = Object.values(coins).map(
+        pack => `<li><span class="mono">${fmt(pack.coin, 0)} coins</span> - ${fmt(pack.sfl, 2)} SFL</li>`
+      );
+      holder.innerHTML = `
+        <div class="tiny"><strong>Gems</strong></div>
+        <ul class="list-reset">${gemRows.join("") || "<li>No data</li>"}</ul>
+        <div class="tiny" style="margin-top:0.5rem;"><strong>Coins</strong></div>
+        <ul class="list-reset">${coinRows.join("") || "<li>No data</li>"}</ul>
+      `;
+    }
+
+    function renderPrices(data) {
+      const holder = document.getElementById("priceBoard");
+      if (!holder) return;
+      const p2p = data?.data?.p2p ?? {};
+      const rows = Object.entries(p2p)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 30)
+        .map(([name, price]) => `<tr><td>${name}</td><td class="right">${fmt(price, 6)}</td></tr>`)
+        .join("");
+      holder.innerHTML = `
+        <div class="tiny" style="margin-bottom:0.4rem;">Updated: ${data?.updated_text || "unknown"}</div>
+        <table>
+          <thead><tr><th>Item</th><th class="right">Floor</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="2">No prices available.</td></tr>'}</tbody>
+        </table>
+      `;
+    }
+
+    function renderAuctions(data) {
+      const holder = document.getElementById("auctions");
+      if (!holder) return;
+      const list = data?.list ?? [];
+      const now = Date.now();
+      const selected = list
+        .filter(item => Number(item.endAt) * 1000 > now)
+        .sort((a, b) => Number(a.endAt) - Number(b.endAt))
+        .slice(0, 10);
+
+      const rows = selected.map(item => {
+        const start = item.startAt ? new Date(Number(item.startAt) * 1000).toLocaleString() : "-";
+        const end = item.endAt ? new Date(Number(item.endAt) * 1000).toLocaleString() : "-";
+        const name = item.nft || item.type || `Auction #${item.auctionId}`;
+        return `<tr><td>${name}</td><td class="right">${fmt(item.supply, 0)}</td><td class="right">${fmt(item.sfl, 4)}</td><td>${start}</td><td>${end}</td></tr>`;
+      }).join("");
+
+      holder.innerHTML = `
+        <div class="tiny" style="margin-bottom:0.4rem;">Total supply keys: ${Object.keys(data?.totalSupply || {}).length}</div>
+        <table>
+          <thead><tr><th>Item</th><th class="right">Supply</th><th class="right">SFL</th><th>Start</th><th>End</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="5">No active auctions found.</td></tr>'}</tbody>
+        </table>
+      `;
+    }
+
+    function renderBoostTable(groupName, values) {
+      const rows = Object.entries(values || {})
+        .sort((a, b) => b[1].avg - a[1].avg)
+        .map(([name, stats]) => `<tr><td>${name}</td><td class="right">${fmt(stats.min, 3)}</td><td class="right">${fmt(stats.max, 3)}</td><td class="right">${fmt(stats.avg, 3)}</td></tr>`)
+        .join("");
+
+      return `
+        <div class="tiny" style="margin:0.5rem 0 0.25rem;"><strong>${groupName}</strong></div>
+        <table>
+          <thead><tr><th>Name</th><th class="right">Min</th><th class="right">Max</th><th class="right">Avg</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="4">No data</td></tr>'}</tbody>
+        </table>
+      `;
+    }
+
+    function renderFarmBoosts(data, farmId) {
+      const holder = document.getElementById("farmBoosts");
+      if (!holder) return;
+      holder.innerHTML = `
+        <div class="tiny">Farm NFT ID: <span class="mono">${farmId}</span></div>
+        ${renderBoostTable("Resources", data?.resources)}
+        ${renderBoostTable("Fruits", data?.fruits)}
+        ${renderBoostTable("Crops", data?.crops)}
+        ${renderBoostTable("Greenhouse", data?.greenhouse)}
+      `;
+    }
+
+    function renderLandIdentity(data, farmId) {
+      const holder = document.getElementById("landIdentity");
+      if (!holder) return;
+      holder.innerHTML = `
+        <ul class="list-reset">
+          <li><strong>Username:</strong> ${data?.username || "-"}</li>
+          <li><strong>Farm ID:</strong> <span class="mono">${data?.farm_id || "-"}</span></li>
+          <li><strong>NFT ID:</strong> <span class="mono">${data?.nft_id || farmId}</span></li>
+        </ul>
+      `;
+    }
+
+    function renderNfts(data) {
+      const holder = document.getElementById("nftsBoard");
+      if (!holder) return;
+      const collectibles = (data?.collectibles || []).slice().sort((a, b) => (a.floor ?? Infinity) - (b.floor ?? Infinity)).slice(0, 8);
+      const rows = collectibles
+        .map(item => `<tr><td>${item.name || `#${item.id}`}</td><td class="right">${fmt(item.floor, 4)}</td><td class="right">${fmt(item.supply, 0)}</td></tr>`)
+        .join("");
+      holder.innerHTML = `
+        <div class="tiny" style="margin-bottom:0.4rem;">Updated at: ${data?.updatedAt ? new Date(data.updatedAt).toLocaleString() : "-"}</div>
+        <table>
+          <thead><tr><th>Collectible</th><th class="right">Floor</th><th class="right">Supply</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="3">No NFT data.</td></tr>'}</tbody>
+        </table>
+      `;
+    }
+
+    async function loadFarmIdentity(farmId) {
+      try {
+        const info = await fetchJson(`/api/v1/land/info/nft_id/${farmId}`);
+        renderLandIdentity(info, farmId);
+      } catch {
+        const holder = document.getElementById("landIdentity");
+        if (holder) holder.textContent = "Unable to load land identity for this NFT ID.";
+      }
+    }
+
+    async function loadFarmBoosts(farmId) {
+      const data = await fetchJson(`/api/v1/land/${farmId}`);
+      renderFarmBoosts(data, farmId);
+    }
+
+    async function loadDashboard() {
+      const farmIdInput = document.getElementById("farmIdInput");
+      const farmId = Number(farmIdInput?.value || 114779);
+      if (!Number.isFinite(farmId) || farmId < 1) {
+        setStatus("Please enter a valid farm NFT ID.", "warn");
+        return;
+      }
+
+      setStatus("Loading APIs...", "");
+      try {
+        const [exchange, prices, auctions, nfts] = await Promise.all([
+          fetchJson("/api/v1.1/exchange"),
+          fetchJson("/api/v1/prices"),
+          fetchJson("/api/v1/auctions"),
+          fetchJson("/api/v1/nfts")
+        ]);
+
+        renderExchange(exchange);
+        renderPacks(exchange);
+        renderPrices(prices);
+        renderAuctions(auctions);
+        renderNfts(nfts);
+
+        await Promise.all([loadFarmBoosts(farmId), loadFarmIdentity(farmId)]);
+        setStatus(`Live data loaded from sfl.world for farm NFT ${farmId}.`, "ok");
+      } catch (error) {
+        console.error(error);
+        setStatus("Could not load one or more APIs. If local static mode blocks CORS, deploy on Netlify to use the function proxy.", "error");
+      }
+    }
+
+    document.getElementById("refreshBtn")?.addEventListener("click", loadDashboard);
+    document.getElementById("loadBtn")?.addEventListener("click", loadDashboard);
+    document.getElementById("farmIdInput")?.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") loadDashboard();
+    });
+
+    loadDashboard();
+  </script>
+</body>
+</html>

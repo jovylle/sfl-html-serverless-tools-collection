@@ -4,3 +4,6 @@
 [build]
   publish = "."
   # command intentionally omitted — deploy files as-is
+
+[functions]
+  directory = "functions"
